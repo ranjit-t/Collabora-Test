@@ -131,6 +131,36 @@ If it doesn't work, press F12 and check the Console tab for errors.
 
 ## 🐛 Quick Troubleshooting
 
+### Collabora: "port already allocated" error?
+
+If you get "Bind for 0.0.0.0:9980 failed: port is already allocated":
+
+```bash
+# Run the cleanup script
+cd ~/Collabora-Test/deployment
+sudo ./cleanup-collabora.sh
+
+# Then run setup again
+sudo ./setup-collabora.sh
+```
+
+Or manually clean up:
+
+```bash
+# Stop all collabora containers
+docker ps -a | grep collabora | awk '{print $1}' | xargs docker stop
+docker ps -a | grep collabora | awk '{print $1}' | xargs docker rm
+
+# Kill processes on port 9980
+sudo fuser -k 9980/tcp
+
+# Verify port is free
+sudo lsof -i :9980
+
+# If still in use, restart Docker
+sudo systemctl restart docker
+```
+
 ### Document doesn't load?
 
 ```bash
@@ -141,6 +171,33 @@ sudo docker ps | grep collabora
 # Check logs
 sudo journalctl -u wopi-server --since "5 minutes ago"
 sudo tail -50 /var/log/nginx/app-exp-error.log
+sudo docker logs --tail 50 collabora
+```
+
+### WOPI Server not responding?
+
+```bash
+# Check if service is running
+sudo systemctl status wopi-server
+
+# Restart it
+sudo systemctl restart wopi-server
+
+# Check logs for errors
+sudo journalctl -u wopi-server -n 100
+```
+
+### Nginx errors?
+
+```bash
+# Test configuration
+sudo nginx -t
+
+# Check logs
+sudo tail -100 /var/log/nginx/app-exp-error.log
+
+# Reload nginx
+sudo systemctl reload nginx
 ```
 
 ### Still not working?
@@ -302,6 +359,152 @@ After successful deployment:
 # Docker container named 'collabora' on port 9980
 ```
 
+## 🔄 Updating from GitHub (Redeployment)
+
+When you push updates to GitHub and need to deploy them to the server:
+
+### Full Update (All Components)
+
+```bash
+# SSH to your server
+ssh user@app-exp.dev.lan
+cd ~/Collabora-Test
+
+# Stop services
+sudo systemctl stop wopi-server nginx
+sudo docker stop collabora
+
+# Pull latest changes
+git pull origin main
+
+# Redeploy in order
+cd deployment
+chmod +x *.sh
+
+# 1. Update Collabora (if Docker config changed)
+sudo ./setup-collabora.sh
+
+# 2. Redeploy backend
+cd ../backend
+sudo ../deployment/deploy-backend.sh
+
+# 3. Update frontend config if needed
+cd ../frontend
+nano app.js  # If Collabora URL changed
+
+# 4. Redeploy frontend
+cd ../deployment
+sudo ./deploy-frontend.sh
+
+# Verify everything is running
+sudo systemctl status wopi-server nginx --no-pager
+sudo docker ps | grep collabora
+```
+
+### Quick Update (Frontend Only)
+
+If you only changed frontend files (HTML/CSS/JS):
+
+```bash
+cd ~/Collabora-Test
+git pull
+
+# Copy new frontend files
+sudo cp frontend/* /var/www/app-exp-frontend/
+sudo chown www-data:www-data /var/www/app-exp-frontend/*
+
+# Reload nginx
+sudo systemctl reload nginx
+```
+
+### Quick Update (Backend Only)
+
+If you only changed backend code:
+
+```bash
+cd ~/Collabora-Test
+git pull
+
+# Copy new backend files
+sudo cp backend/wopi_server.py /opt/wopi-server/
+sudo cp backend/requirements.txt /opt/wopi-server/
+
+# Reinstall dependencies if requirements.txt changed
+cd /opt/wopi-server
+sudo ./venv/bin/pip install -r requirements.txt
+
+# Restart WOPI server
+sudo systemctl restart wopi-server
+
+# Check status
+sudo systemctl status wopi-server
+```
+
+### Quick Update (Nginx Config Only)
+
+If you only changed nginx configuration:
+
+```bash
+cd ~/Collabora-Test
+git pull
+
+# Copy new nginx config
+sudo cp deployment/nginx-app-exp.conf /etc/nginx/sites-available/app-exp
+
+# Test and reload
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Update Documents
+
+If you added/updated documents:
+
+```bash
+cd ~/Collabora-Test
+git pull
+
+# Copy new documents
+sudo cp backend/documents/* /opt/wopi-server/documents/
+sudo chown www-data:www-data /opt/wopi-server/documents/*
+sudo chmod 644 /opt/wopi-server/documents/*
+
+# No restart needed - documents are read on demand
+```
+
+### Verification After Update
+
+```bash
+# Check all services
+sudo systemctl is-active wopi-server nginx
+sudo docker ps | grep collabora
+
+# Test endpoints
+curl http://localhost:5001/health
+curl -k https://app-exp.dev.lan/health
+
+# View logs for errors
+sudo journalctl -u wopi-server -n 50
+sudo tail -50 /var/log/nginx/app-exp-error.log
+sudo docker logs --tail 50 collabora
+```
+
+### Rollback (If Something Breaks)
+
+```bash
+cd ~/Collabora-Test
+
+# Go back to previous commit
+git log --oneline -5  # Find the commit hash
+git checkout <previous-commit-hash>
+
+# Redeploy the previous version
+# Follow the appropriate update steps above
+
+# Or reset to a specific version
+git reset --hard <commit-hash>
+git pull  # If you want to re-sync with remote
+```
+
 ## 💡 Tips
 
 1. **Always check logs first** when troubleshooting
@@ -311,6 +514,20 @@ After successful deployment:
 5. **Save the admin password** from step 2
 6. **Use reload not restart** for nginx when possible
 7. **Check service status** after any changes
+8. **Always `git pull` before making changes** on the server
+9. **Stop services before full redeployment**
+10. **Test after every update** - don't assume it works!
+
+## 🎯 Common Update Scenarios
+
+| What Changed | Commands |
+|--------------|----------|
+| Frontend HTML/CSS/JS | `git pull` → Copy to `/var/www/app-exp-frontend/` → `systemctl reload nginx` |
+| Backend Python code | `git pull` → Copy to `/opt/wopi-server/` → `systemctl restart wopi-server` |
+| Nginx config | `git pull` → Copy config → `nginx -t` → `systemctl reload nginx` |
+| Documents | `git pull` → Copy to `/opt/wopi-server/documents/` → No restart |
+| Requirements.txt | `git pull` → Copy → Reinstall in venv → `systemctl restart wopi-server` |
+| Everything | Full redeployment process above |
 
 ---
 

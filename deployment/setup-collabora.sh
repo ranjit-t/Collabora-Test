@@ -49,6 +49,19 @@ else
     echo "No existing container found"
 fi
 
+# Force kill any process using port 9980
+echo ""
+echo "Checking if port 9980 is in use..."
+if lsof -Pi :9980 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "Port 9980 is in use. Cleaning up..."
+    # Kill any docker-proxy processes on port 9980
+    fuser -k 9980/tcp 2>/dev/null || true
+    sleep 2
+    echo "✓ Port 9980 cleaned up"
+else
+    echo "✓ Port 9980 is available"
+fi
+
 # Step 3: Pull latest Collabora CODE image
 echo ""
 echo "Step 3: Pulling Collabora CODE Docker image..."
