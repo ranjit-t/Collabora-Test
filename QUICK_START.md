@@ -16,26 +16,32 @@ A complete document editing system with:
 - SSH access with sudo privileges
 - Domain: `app-exp.dev.lan` configured
 - SSL certificates available
+- Git installed on server
 
 ## 🚀 5-Step Deployment
 
-### 1️⃣ Copy Files to Server (2 min)
+### 1️⃣ Clone Repository on Server (1 min)
 
 ```bash
-# On your LOCAL machine, from this directory:
-ssh user@app-exp.dev.lan "mkdir -p ~/collabora-deploy"
-scp -r backend frontend deployment user@app-exp.dev.lan:~/collabora-deploy/
+# SSH into your server
+ssh user@app-exp.dev.lan
+
+# Install git if not already installed
+sudo apt-get update && sudo apt-get install -y git
+
+# Clone the repository
+git clone https://github.com/ranjit-t/Collabora-Test.git
+cd Collabora-Test
 ```
 
 ### 2️⃣ Setup Collabora (3 min)
 
 ```bash
-# SSH into server
-ssh user@app-exp.dev.lan
+# Make scripts executable
+cd deployment
+chmod +x *.sh
 
 # Run Collabora setup
-cd ~/collabora-deploy/deployment
-chmod +x *.sh
 sudo ./setup-collabora.sh
 ```
 
@@ -44,8 +50,8 @@ sudo ./setup-collabora.sh
 ### 3️⃣ Deploy Backend (2 min)
 
 ```bash
-# Still on the server
-cd ~/collabora-deploy/backend
+# Deploy WOPI server
+cd ../backend
 sudo ../deployment/deploy-backend.sh
 ```
 
@@ -56,7 +62,7 @@ sudo ../deployment/deploy-backend.sh
 curl -s http://localhost:9980/hosting/discovery | grep urlsrc | head -1
 
 # Edit frontend config
-cd ~/collabora-deploy/frontend
+cd ../frontend
 nano app.js
 
 # Update line 17:
@@ -67,7 +73,7 @@ nano app.js
 ### 5️⃣ Deploy Frontend (2 min)
 
 ```bash
-cd ~/collabora-deploy/deployment
+cd ../deployment
 sudo ./deploy-frontend.sh
 ```
 

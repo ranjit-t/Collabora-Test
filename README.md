@@ -40,28 +40,31 @@ This project allows you to:
 - Root/sudo access
 - Domain: app-exp.dev.lan configured
 - SSL certificates for the domain
+- Git installed on server
 
-### Step 1: Copy Files to Server
+### Step 1: Clone Repository on Server
 
-From your local machine, copy all files to the server:
+SSH into your server and clone the repository:
 
 ```bash
-# Create deployment directory on server
-ssh user@app-exp.dev.lan "mkdir -p ~/collabora-deploy"
+# SSH into your server
+ssh user@app-exp.dev.lan
 
-# Copy all files
-scp -r backend frontend deployment user@app-exp.dev.lan:~/collabora-deploy/
+# Install git if not already installed
+sudo apt-get update && sudo apt-get install -y git
+
+# Clone the repository
+git clone https://github.com/ranjit-t/Collabora-Test.git
+
+# Navigate to project directory
+cd Collabora-Test
 ```
 
 ### Step 2: Deploy Collabora CODE
 
-SSH into your server and run:
-
 ```bash
-ssh user@app-exp.dev.lan
-cd ~/collabora-deploy/deployment
-
 # Make scripts executable
+cd deployment
 chmod +x *.sh
 
 # Run Collabora setup
@@ -79,7 +82,7 @@ This will:
 ### Step 3: Deploy Backend (WOPI Server)
 
 ```bash
-cd ~/collabora-deploy/backend
+cd ../backend
 sudo ../deployment/deploy-backend.sh
 ```
 
@@ -95,7 +98,7 @@ This will:
 Before deploying the frontend, update the Collabora URL in `app.js`:
 
 ```bash
-cd ~/collabora-deploy/frontend
+cd ../frontend
 
 # Get the correct editor URL
 curl -s http://localhost:9980/hosting/discovery | grep urlsrc | head -1
@@ -107,7 +110,7 @@ nano app.js
 ### Step 5: Deploy Frontend
 
 ```bash
-cd ~/collabora-deploy/deployment
+cd ../deployment
 sudo ./deploy-frontend.sh
 ```
 
@@ -176,11 +179,11 @@ sudo apt-get install -y python3 python3-pip python3-venv
 sudo mkdir -p /opt/wopi-server/documents
 cd /opt/wopi-server
 
-# Copy your files (from your local machine or uploaded location)
-# Assuming files are in ~/collabora-deploy/backend
-sudo cp ~/collabora-deploy/backend/wopi_server.py .
-sudo cp ~/collabora-deploy/backend/requirements.txt .
-sudo cp ~/collabora-deploy/backend/documents/mydoc.docx ./documents/
+# Copy your files from the cloned repository
+# Assuming you cloned to ~/Collabora-Test
+sudo cp ~/Collabora-Test/backend/wopi_server.py .
+sudo cp ~/Collabora-Test/backend/requirements.txt .
+sudo cp ~/Collabora-Test/backend/documents/mydoc.docx ./documents/
 
 # Create virtual environment
 sudo python3 -m venv venv
@@ -237,9 +240,9 @@ sudo apt-get install -y nginx
 sudo mkdir -p /var/www/app-exp-frontend
 
 # Copy frontend files
-sudo cp ~/collabora-deploy/frontend/index.html /var/www/app-exp-frontend/
-sudo cp ~/collabora-deploy/frontend/app.js /var/www/app-exp-frontend/
-sudo cp ~/collabora-deploy/frontend/styles.css /var/www/app-exp-frontend/
+sudo cp ~/Collabora-Test/frontend/index.html /var/www/app-exp-frontend/
+sudo cp ~/Collabora-Test/frontend/app.js /var/www/app-exp-frontend/
+sudo cp ~/Collabora-Test/frontend/styles.css /var/www/app-exp-frontend/
 
 # Set permissions
 sudo chown -R www-data:www-data /var/www/app-exp-frontend
@@ -251,7 +254,7 @@ sudo chmod 644 /var/www/app-exp-frontend/*
 
 ```bash
 # Copy nginx configuration
-sudo cp ~/collabora-deploy/deployment/nginx-app-exp.conf /etc/nginx/sites-available/app-exp
+sudo cp ~/Collabora-Test/deployment/nginx-app-exp.conf /etc/nginx/sites-available/app-exp
 
 # Remove default site
 sudo rm -f /etc/nginx/sites-enabled/default

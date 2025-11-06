@@ -10,27 +10,34 @@ Follow this checklist to deploy the complete Collabora CODE integration.
   - `/etc/ssl/certs/app-exp-dev/cert.pem`
   - `/etc/ssl/private/app-exp-dev/key.pem`
 - [ ] Root/sudo access to the server
-- [ ] All project files ready on local machine
+- [ ] Git installed on server
 
-## 📦 Step 1: Copy Files to Server
+## 📦 Step 1: Clone Repository on Server
 
 ```bash
-# On your local machine, from the Coll-Test directory:
+# SSH into your server
+ssh user@app-exp.dev.lan
 
-# Create deployment directory on server
-ssh user@app-exp.dev.lan "mkdir -p ~/collabora-deploy"
+# Install git if not already installed
+sudo apt-get update
+sudo apt-get install -y git
 
-# Copy all files
-scp -r backend frontend deployment user@app-exp.dev.lan:~/collabora-deploy/
+# Clone the repository
+git clone https://github.com/ranjit-t/Collabora-Test.git
 
-# Verify files copied
-ssh user@app-exp.dev.lan "ls -la ~/collabora-deploy/"
+# Navigate to project directory
+cd Collabora-Test
+
+# Verify files
+ls -la
 ```
 
 **Checklist:**
-- [ ] backend/ directory copied
-- [ ] frontend/ directory copied
-- [ ] deployment/ directory copied
+- [ ] Git installed on server
+- [ ] Repository cloned successfully
+- [ ] backend/ directory exists
+- [ ] frontend/ directory exists
+- [ ] deployment/ directory exists
 - [ ] mydoc.docx exists in backend/documents/
 
 ---
@@ -38,10 +45,9 @@ ssh user@app-exp.dev.lan "ls -la ~/collabora-deploy/"
 ## 🐳 Step 2: Deploy Collabora CODE
 
 ```bash
-# SSH into server
-ssh user@app-exp.dev.lan
+# From the Collabora-Test directory on your server
 
-cd ~/collabora-deploy/deployment
+cd deployment
 
 # Make scripts executable
 chmod +x *.sh
@@ -78,9 +84,9 @@ Admin Password: ____________________________________
 ## 🔧 Step 3: Deploy Backend (WOPI Server)
 
 ```bash
-# Still on the server, from ~/collabora-deploy/deployment
+# Still on the server, from Collabora-Test directory
 
-cd ~/collabora-deploy/backend
+cd ../backend
 sudo ../deployment/deploy-backend.sh
 ```
 
@@ -115,7 +121,8 @@ sudo systemctl status wopi-server
 **IMPORTANT:** Before deploying frontend, update the Collabora URL.
 
 ```bash
-cd ~/collabora-deploy/frontend
+# Navigate to frontend directory
+cd ../frontend
 
 # Get the editor URL from Collabora
 curl -s http://localhost:9980/hosting/discovery | grep urlsrc | head -1
@@ -140,7 +147,8 @@ nano app.js
 ## 🌐 Step 5: Deploy Frontend
 
 ```bash
-cd ~/collabora-deploy/deployment
+# Navigate to deployment directory
+cd ../deployment
 sudo ./deploy-frontend.sh
 ```
 
