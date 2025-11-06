@@ -2,13 +2,16 @@
 """
 WOPI Server for Collabora CODE Integration
 Implements the WOPI protocol for document viewing and editing
+With file upload, download, and management features
 """
 
-from flask import Flask, request, jsonify, send_file, abort, make_response
+from flask import Flask, request, jsonify, send_file, abort, make_response, send_from_directory
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 import os
 import time
 import hashlib
+import uuid
 
 app = Flask(__name__)
 
@@ -19,8 +22,12 @@ CORS(app, resources={r"/*": {"origins": "*"}}, send_wildcard=True)
 DOCS_DIR = os.path.join(os.path.dirname(__file__), "documents")
 os.makedirs(DOCS_DIR, exist_ok=True)
 
-# Ensure sample document exists
-SAMPLE_DOC = os.path.join(DOCS_DIR, "mydoc.docx")
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp', 'doc', 'xls', 'ppt'}
+
+# Maximum file size (25MB)
+MAX_FILE_SIZE = 25 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Simple in-memory storage for file metadata
 file_store = {}
@@ -37,6 +44,11 @@ def remove_security_headers(response):
 
 def get_file_path(file_id):
     """Get the file path for a given file ID"""
+    # Find the file with any supported extension
+    for filename in os.listdir(DOCS_DIR):
+        if filename.startswith(file_id + '.') and allowed_file(filename):
+            return os.path.join(DOCS_DIR, filename)
+    # Fallback to .docx for backward compatibility
     return os.path.join(DOCS_DIR, f"{file_id}.docx")
 
 
@@ -47,6 +59,37 @@ def get_file_version(file_path):
     stat = os.stat(file_path)
     version_string = f"{stat.st_mtime}_{stat.st_size}"
     return hashlib.md5(version_string.encode()).hexdigest()[:8]
+
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_file_extension(filename):
+    """Get file extension"""
+    return filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+
+
+def list_documents():
+    """List all documents in the documents directory"""
+    documents = []
+    for filename in os.listdir(DOCS_DIR):
+        if allowed_file(filename):
+            file_path = os.path.join(DOCS_DIR, filename)
+            file_id = filename.rsplit('.', 1)[0]
+            stat = os.stat(file_path)
+            documents.append({
+                'id': file_id,
+                'name': filename,
+                'size': stat.st_size,
+                'modified': stat.st_mtime,
+                'extension': get_file_extension(filename)
+            })
+    # Sort by modified time, newest first
+    documents.sort(key=lambda x: x['modified'], reverse=True)
+    return documents
 
 
 @app.route("/")
@@ -85,9 +128,10 @@ def check_file_info(file_id):
     try:
         size = os.path.getsize(file_path)
         version = get_file_version(file_path)
+        filename = os.path.basename(file_path)
 
         info = {
-            "BaseFileName": f"{file_id}.docx",
+            "BaseFileName": filename,
             "OwnerId": "wopi-server",
             "Size": size,
             "Version": version,
@@ -181,13 +225,161 @@ def health():
     })
 
 
-if __name__ == "__main__":
-    # Check if sample document exists
-    if not os.path.exists(SAMPLE_DOC):
-        print(f"WARNING: Sample document not found at {SAMPLE_DOC}")
-        print("Please copy mydoc.docx to the documents/ directory")
+# =====================================================
+# Document Management API Endpoints
+# =====================================================
 
+@app.route("/api/documents", methods=["GET"])
+def get_documents():
+    """List all documents"""
+    try:
+        documents = list_documents()
+        return jsonify({
+            "success": True,
+            "documents": documents,
+            "count": len(documents)
+        })
+    except Exception as e:
+        app.logger.error(f"Error listing documents: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/api/upload", methods=["POST"])
+def upload_document():
+    """Upload a new document"""
+    try:
+        # Check if file part exists
+        if 'file' not in request.files:
+            return jsonify({
+                "success": False,
+                "error": "No file part in request"
+            }), 400
+
+        file = request.files['file']
+
+        # Check if file is selected
+        if file.filename == '':
+            return jsonify({
+                "success": False,
+                "error": "No file selected"
+            }), 400
+
+        # Check if file is allowed
+        if not allowed_file(file.filename):
+            return jsonify({
+                "success": False,
+                "error": f"File type not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
+            }), 400
+
+        # Secure the filename
+        filename = secure_filename(file.filename)
+
+        # Generate unique filename if file already exists
+        base_name, extension = filename.rsplit('.', 1)
+        counter = 1
+        while os.path.exists(os.path.join(DOCS_DIR, filename)):
+            filename = f"{base_name}_{counter}.{extension}"
+            counter += 1
+
+        # Save file
+        file_path = os.path.join(DOCS_DIR, filename)
+        file.save(file_path)
+
+        # Get file info
+        file_id = filename.rsplit('.', 1)[0]
+        stat = os.stat(file_path)
+
+        app.logger.info(f"File uploaded: {filename}, size: {stat.st_size}")
+
+        return jsonify({
+            "success": True,
+            "message": "File uploaded successfully",
+            "document": {
+                'id': file_id,
+                'name': filename,
+                'size': stat.st_size,
+                'modified': stat.st_mtime,
+                'extension': get_file_extension(filename)
+            }
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error uploading file: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/api/download/<file_id>", methods=["GET"])
+def download_document(file_id):
+    """Download a document"""
+    try:
+        # Find the file
+        matching_files = [f for f in os.listdir(DOCS_DIR) if f.startswith(file_id + '.')]
+
+        if not matching_files:
+            return jsonify({
+                "success": False,
+                "error": "File not found"
+            }), 404
+
+        filename = matching_files[0]
+        file_path = os.path.join(DOCS_DIR, filename)
+
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error downloading file: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/api/delete/<file_id>", methods=["DELETE"])
+def delete_document(file_id):
+    """Delete a document"""
+    try:
+        # Find the file
+        matching_files = [f for f in os.listdir(DOCS_DIR) if f.startswith(file_id + '.')]
+
+        if not matching_files:
+            return jsonify({
+                "success": False,
+                "error": "File not found"
+            }), 404
+
+        filename = matching_files[0]
+        file_path = os.path.join(DOCS_DIR, filename)
+
+        os.remove(file_path)
+
+        app.logger.info(f"File deleted: {filename}")
+
+        return jsonify({
+            "success": True,
+            "message": "File deleted successfully"
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error deleting file: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+if __name__ == "__main__":
     # Run on port 5001
     print("Starting WOPI Server on port 5001...")
     print(f"Documents directory: {DOCS_DIR}")
+    print("Supported file types:", ', '.join(ALLOWED_EXTENSIONS))
     app.run(host="0.0.0.0", port=5001, debug=True)
