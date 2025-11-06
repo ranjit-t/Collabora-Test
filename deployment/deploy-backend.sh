@@ -17,6 +17,11 @@ SERVICE_NAME="wopi-server"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 PYTHON_BIN="/usr/bin/python3"
 
+# Detect script location and find repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BACKEND_SOURCE="$REPO_ROOT/backend"
+
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     echo "This script must be run as root (use sudo)"
@@ -37,31 +42,35 @@ mkdir -p "$BACKEND_DIR/documents"
 # Step 3: Copy files
 echo ""
 echo "Step 3: Copying backend files..."
-echo "Please ensure the following files are in the current directory:"
-echo "  - wopi_server.py"
-echo "  - requirements.txt"
-echo "  - documents/mydoc.docx"
+echo "Source: $BACKEND_SOURCE"
 echo ""
 
-# Check if files exist
-if [ ! -f "wopi_server.py" ]; then
-    echo "ERROR: wopi_server.py not found in current directory"
+# Check if backend directory exists
+if [ ! -d "$BACKEND_SOURCE" ]; then
+    echo "ERROR: Backend source directory not found: $BACKEND_SOURCE"
+    echo "Make sure you're running this from the Collabora-Test repository"
     exit 1
 fi
 
-if [ ! -f "requirements.txt" ]; then
-    echo "ERROR: requirements.txt not found in current directory"
+# Check if files exist
+if [ ! -f "$BACKEND_SOURCE/wopi_server.py" ]; then
+    echo "ERROR: wopi_server.py not found in $BACKEND_SOURCE"
+    exit 1
+fi
+
+if [ ! -f "$BACKEND_SOURCE/requirements.txt" ]; then
+    echo "ERROR: requirements.txt not found in $BACKEND_SOURCE"
     exit 1
 fi
 
 # Copy files
-cp wopi_server.py "$BACKEND_DIR/"
-cp requirements.txt "$BACKEND_DIR/"
+cp "$BACKEND_SOURCE/wopi_server.py" "$BACKEND_DIR/"
+cp "$BACKEND_SOURCE/requirements.txt" "$BACKEND_DIR/"
 
 # Copy documents if they exist
-if [ -d "documents" ]; then
-    cp -r documents/* "$BACKEND_DIR/documents/"
-    echo "Documents copied successfully"
+if [ -d "$BACKEND_SOURCE/documents" ]; then
+    cp -r "$BACKEND_SOURCE/documents/"* "$BACKEND_DIR/documents/"
+    echo "✓ Documents copied successfully"
 else
     echo "Warning: documents directory not found"
 fi
