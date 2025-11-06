@@ -216,6 +216,18 @@ sudo chown -R www-data:www-data /opt/wopi-server/documents/
 sudo chmod 755 /opt/wopi-server/documents/
 ```
 
+### Editor shows "localhost sent an invalid response"?
+The frontend is using localhost URLs instead of your domain.
+
+```bash
+# Quick fix - replace all localhost URLs
+cd ~/Collabora-Test
+git pull
+sudo ./deployment/fix_frontend_urls.sh
+
+# Then hard refresh your browser: Ctrl+Shift+R (or Cmd+Shift+R on Mac)
+```
+
 ### Frontend shows "not valid JSON" error?
 This means the API requests aren't being proxied correctly.
 

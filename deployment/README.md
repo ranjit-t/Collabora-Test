@@ -27,6 +27,7 @@ sudo ./deploy_all.sh
 | `stop_services.sh` | Stop all services (Collabora, Backend, Frontend) | `sudo ./stop_services.sh` |
 | `cleanup-collabora.sh` | Clean up Collabora Docker containers and ports | `sudo ./cleanup-collabora.sh` |
 | `update_frontend_config.sh` | Update frontend API URLs (automatic in deployment) | `sudo ./update_frontend_config.sh` |
+| `fix_frontend_urls.sh` | Force replace all localhost URLs with domain | `sudo ./fix_frontend_urls.sh` |
 
 ## 📋 Deployment Order
 
