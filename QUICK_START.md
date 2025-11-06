@@ -91,15 +91,21 @@ sudo ./deployment/update_frontend_config.sh
 sudo systemctl status wopi-server nginx
 sudo docker ps | grep collabora
 
-# Test endpoints
+# Test backend directly
 curl http://localhost:5001/health
+curl http://localhost:5001/api/documents
+
+# Test through nginx proxy
 curl -k https://app-exp.dev.lan/health
+curl -k https://app-exp.dev.lan/api/documents
 ```
 
 **Access your app:**
 ```
 https://app-exp.dev.lan
 ```
+
+You should see your documents listed on the homepage!
 
 ---
 
@@ -208,6 +214,20 @@ ls -la /opt/wopi-server/documents/
 # Fix permissions
 sudo chown -R www-data:www-data /opt/wopi-server/documents/
 sudo chmod 755 /opt/wopi-server/documents/
+```
+
+### Frontend shows "not valid JSON" error?
+This means the API requests aren't being proxied correctly.
+
+```bash
+# Test if API is accessible
+curl -k https://app-exp.dev.lan/api/documents
+
+# If you get HTML instead of JSON, update nginx config
+cd ~/Collabora-Test
+git pull
+sudo cp deployment/nginx-app-exp.conf /etc/nginx/sites-available/app-exp
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ### Nginx errors?
