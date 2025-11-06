@@ -26,6 +26,7 @@ sudo ./deploy_all.sh
 |--------|-------------|-------|
 | `stop_services.sh` | Stop all services (Collabora, Backend, Frontend) | `sudo ./stop_services.sh` |
 | `cleanup-collabora.sh` | Clean up Collabora Docker containers and ports | `sudo ./cleanup-collabora.sh` |
+| `update_frontend_config.sh` | Update frontend API URLs (automatic in deployment) | `sudo ./update_frontend_config.sh` |
 
 ## 📋 Deployment Order
 
@@ -109,6 +110,7 @@ sudo ./stop_services.sh
 - Creates `/var/www/app-exp-frontend/` directory
 - Copies HTML, CSS, JS files
 - Configures Nginx reverse proxy
+- Automatically updates API URLs (calls update_frontend_config.sh)
 - Reloads Nginx
 
 ### `setup-collabora.sh`
@@ -129,6 +131,13 @@ sudo ./stop_services.sh
 - Removes Collabora containers
 - Kills processes on port 9980
 - Cleans up for fresh install
+
+### `update_frontend_config.sh`
+- Automatically detects Collabora URL
+- Updates API base URL to production domain
+- Updates Collabora server URL in frontend
+- Reloads Nginx to apply changes
+- Called automatically by frontend_deployment.sh
 
 ## 🔧 Configuration Files
 

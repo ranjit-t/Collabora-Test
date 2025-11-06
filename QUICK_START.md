@@ -72,22 +72,14 @@ sudo ./frontend_deployment.sh
 
 ---
 
-## ⚙️ Post-Deployment Configuration
+## ⚙️ Post-Deployment (Optional)
 
-**Update Collabora URL in frontend:**
+**Frontend configuration is now automatic!** The deployment script automatically detects and configures the Collabora URL.
+
+If you need to manually update the configuration:
 
 ```bash
-# Get Collabora editor URL
-curl http://localhost:9980/hosting/discovery | grep urlsrc | head -1
-
-# Edit frontend config
-sudo nano /var/www/app-exp-frontend/app.js
-
-# Update line 11 with the URL from above:
-# collaboraServer: 'http://localhost:9980/browser/YOUR_HASH/cool.html',
-
-# Save and restart nginx
-sudo systemctl reload nginx
+sudo ./deployment/update_frontend_config.sh
 ```
 
 ---

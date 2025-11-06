@@ -92,7 +92,12 @@ else
     exit 1
 fi
 
-# Step 7: Verify
+# Step 7: Update frontend configuration
+echo ""
+echo "⚙️  Updating frontend configuration..."
+bash "$SCRIPT_DIR/update_frontend_config.sh" || echo "   ⚠️  Config update failed (run manually later)"
+
+# Step 8: Verify
 echo ""
 echo "✅ Verifying deployment..."
 if systemctl is-active --quiet nginx; then
