@@ -2,8 +2,8 @@
 // Configuration
 // ========================================
 const CONFIG = {
-    apiBaseUrl: 'http://localhost:5001',
-    collaboraServer: 'http://localhost:9980/browser/e808afa229/cool.html',
+    apiBaseUrl: 'https://app-exp.dev.lan',
+    collaboraServer: 'https://app-exp.dev.lan/browser/e808afa229/cool.html',
     maxFileSize: 25 * 1024 * 1024 // 25MB
 };
 
