@@ -173,10 +173,60 @@ function printDocument() {
     const iframe = document.getElementById('collaboraFrame');
 
     try {
-        iframe.contentWindow.print();
+        // Focus the iframe first
+        iframe.contentWindow.focus();
+
+        // Method 1: Try to simulate Ctrl+P
+        try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const event = new KeyboardEvent('keydown', {
+                key: 'p',
+                code: 'KeyP',
+                keyCode: 80,
+                which: 80,
+                ctrlKey: true,
+                metaKey: navigator.platform.includes('Mac'),
+                bubbles: true,
+                cancelable: true
+            });
+            iframeDoc.dispatchEvent(event);
+            console.log('Print shortcut sent');
+        } catch (e) {
+            console.log('KeyboardEvent method failed:', e);
+        }
+
+        // Method 2: Send PostMessage to Collabora
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.postMessage(JSON.stringify({
+                    MessageId: 'Action_Print',
+                    SendTime: Date.now(),
+                    Values: {}
+                }), '*');
+                console.log('PostMessage print command sent');
+            } catch (e) {
+                console.log('PostMessage method failed:', e);
+            }
+        }, 100);
+
+        // Method 3: Try uno command
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.postMessage('uno .uno:Print', '*');
+                console.log('UNO command sent');
+            } catch (e) {
+                console.log('UNO method failed:', e);
+            }
+        }, 200);
+
+        // Show hint only if nothing worked
+        setTimeout(() => {
+            console.log('If print dialog didn\'t open, use File > Print or Ctrl+P');
+        }, 500);
+
     } catch (error) {
         console.error('Print error:', error);
-        alert('Unable to print. Please use the download button and print from your local application.');
+        alert('Please use File > Print from the menu bar, or press Ctrl+P (Cmd+P on Mac) inside the document.');
     }
 }
 
