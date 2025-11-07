@@ -176,52 +176,19 @@ function printDocument() {
         // Focus the iframe first
         iframe.contentWindow.focus();
 
-        // Method 1: Try to simulate Ctrl+P
-        try {
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-            const event = new KeyboardEvent('keydown', {
-                key: 'p',
-                code: 'KeyP',
-                keyCode: 80,
-                which: 80,
-                ctrlKey: true,
-                metaKey: navigator.platform.includes('Mac'),
-                bubbles: true,
-                cancelable: true
-            });
-            iframeDoc.dispatchEvent(event);
-            console.log('Print shortcut sent');
-        } catch (e) {
-            console.log('KeyboardEvent method failed:', e);
-        }
+        // Send PostMessage to Collabora to trigger print
+        // This uses Collabora's PostMessage API
+        iframe.contentWindow.postMessage(JSON.stringify({
+            MessageId: 'Action_Print',
+            SendTime: Date.now(),
+            Values: {}
+        }), '*');
 
-        // Method 2: Send PostMessage to Collabora
-        setTimeout(() => {
-            try {
-                iframe.contentWindow.postMessage(JSON.stringify({
-                    MessageId: 'Action_Print',
-                    SendTime: Date.now(),
-                    Values: {}
-                }), '*');
-                console.log('PostMessage print command sent');
-            } catch (e) {
-                console.log('PostMessage method failed:', e);
-            }
-        }, 100);
+        console.log('Print command sent to Collabora');
 
-        // Method 3: Try uno command
+        // Show helpful message after a short delay
         setTimeout(() => {
-            try {
-                iframe.contentWindow.postMessage('uno .uno:Print', '*');
-                console.log('UNO command sent');
-            } catch (e) {
-                console.log('UNO method failed:', e);
-            }
-        }, 200);
-
-        // Show hint only if nothing worked
-        setTimeout(() => {
-            console.log('If print dialog didn\'t open, use File > Print or Ctrl+P');
+            console.log('💡 Tip: You can also use File > Print or Ctrl+P (Cmd+P on Mac) inside the document');
         }, 500);
 
     } catch (error) {
