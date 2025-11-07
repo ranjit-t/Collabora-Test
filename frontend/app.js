@@ -174,26 +174,63 @@ function printDocument() {
 
     try {
         // Focus the iframe first
+        iframe.focus();
         iframe.contentWindow.focus();
 
-        // Send PostMessage to Collabora to trigger print
-        // This uses Collabora's PostMessage API
-        iframe.contentWindow.postMessage(JSON.stringify({
-            MessageId: 'Action_Print',
-            SendTime: Date.now(),
-            Values: {}
-        }), '*');
-
-        console.log('Print command sent to Collabora');
-
-        // Show helpful message after a short delay
+        // Small delay to ensure focus is set
         setTimeout(() => {
-            console.log('💡 Tip: You can also use File > Print or Ctrl+P (Cmd+P on Mac) inside the document');
-        }, 500);
+            try {
+                const iframeWindow = iframe.contentWindow;
+                const iframeDoc = iframeWindow.document;
+
+                // Create both keydown and keyup events for Ctrl+P
+                const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+
+                const eventInit = {
+                    key: 'p',
+                    code: 'KeyP',
+                    keyCode: 80,
+                    which: 80,
+                    charCode: 112,
+                    ctrlKey: !isMac,
+                    metaKey: isMac,
+                    bubbles: true,
+                    cancelable: true,
+                    composed: true,
+                    view: iframeWindow
+                };
+
+                // Dispatch keydown event
+                const keydownEvent = new KeyboardEvent('keydown', eventInit);
+                iframeDoc.dispatchEvent(keydownEvent);
+
+                // Also try dispatching to the body and active element
+                if (iframeDoc.body) {
+                    iframeDoc.body.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+                }
+                if (iframeDoc.activeElement) {
+                    iframeDoc.activeElement.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+                }
+
+                // Try dispatching to window as well
+                iframeWindow.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+
+                console.log('Print command sent (Ctrl+P simulation)');
+
+            } catch (innerError) {
+                console.error('Failed to simulate keypress:', innerError);
+                // Try the native print as fallback
+                try {
+                    iframe.contentWindow.print();
+                } catch (printError) {
+                    console.error('Native print also failed:', printError);
+                }
+            }
+        }, 100);
 
     } catch (error) {
         console.error('Print error:', error);
-        alert('Please use File > Print from the menu bar, or press Ctrl+P (Cmd+P on Mac) inside the document.');
+        alert('Unable to trigger print. Please use File > Print or press Ctrl+P (Cmd+P on Mac) inside the document.');
     }
 }
 
