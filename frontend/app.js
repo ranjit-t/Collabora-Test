@@ -16,6 +16,10 @@ let documents = [];
 let editorModal = null;
 let uploadModal = null;
 
+// Permission state
+let canEdit = true;  // true = editing enabled, false = view-only
+let canPrint = true; // true = printing enabled, false = printing disabled
+
 // ========================================
 // Initialize on Page Load
 // ========================================
@@ -129,22 +133,48 @@ function openDocument(fileId, fileName) {
     currentDocumentId = fileId;
     currentDocumentName = fileName;
 
+    // Reset permissions to default (enabled)
+    canEdit = true;
+    canPrint = true;
+
     console.log('Opening document:', fileId, fileName);
 
     // Set modal title
     document.getElementById('editorTitle').textContent = fileName;
 
-    // Build Collabora URL
-    const wopiSrc = encodeURIComponent(CONFIG.apiBaseUrl + '/wopi/files/' + fileId);
-    const collaboraUrl = CONFIG.collaboraServer + '?WOPISrc=' + wopiSrc;
+    // Update permission buttons UI
+    updatePermissionUI();
 
-    console.log('Collabora URL:', collaboraUrl);
-
-    // Load document in iframe
-    document.getElementById('collaboraFrame').src = collaboraUrl;
+    // Load document with current permissions
+    loadDocumentWithPermissions();
 
     // Show modal
     editorModal.show();
+}
+
+// ========================================
+// Load Document with Current Permissions
+// ========================================
+function loadDocumentWithPermissions() {
+    // Build permission string
+    let permissions = [];
+    if (!canEdit) permissions.push('readonly');
+    if (!canPrint) permissions.push('noprint');
+
+    // Build WOPI URL with permissions
+    let wopiUrl = CONFIG.apiBaseUrl + '/wopi/files/' + currentDocumentId;
+    if (permissions.length > 0) {
+        wopiUrl += '?permissions=' + permissions.join(',');
+    }
+
+    const wopiSrc = encodeURIComponent(wopiUrl);
+    const collaboraUrl = CONFIG.collaboraServer + '?WOPISrc=' + wopiSrc;
+
+    console.log('Collabora URL:', collaboraUrl);
+    console.log('Permissions:', { canEdit, canPrint });
+
+    // Load document in iframe
+    document.getElementById('collaboraFrame').src = collaboraUrl;
 }
 
 // ========================================
@@ -358,6 +388,70 @@ function escapeHtml(text) {
 
 function showError(message) {
     alert('Error: ' + message);
+}
+
+// ========================================
+// Permission Toggle Functions
+// ========================================
+
+function toggleEditing() {
+    canEdit = !canEdit;
+    console.log('Toggle editing:', canEdit ? 'enabled' : 'disabled');
+
+    // Update UI
+    updatePermissionUI();
+
+    // Reload document with new permissions
+    loadDocumentWithPermissions();
+}
+
+function togglePrinting() {
+    canPrint = !canPrint;
+    console.log('Toggle printing:', canPrint ? 'enabled' : 'disabled');
+
+    // Update UI
+    updatePermissionUI();
+
+    // Reload document with new permissions
+    loadDocumentWithPermissions();
+}
+
+function updatePermissionUI() {
+    // Update Edit toggle button
+    const editBtn = document.getElementById('toggleEditBtn');
+    const editBtnText = document.getElementById('editBtnText');
+    if (canEdit) {
+        editBtn.className = 'btn btn-sm btn-outline-warning';
+        editBtnText.textContent = 'Disable Editing';
+        editBtn.title = 'Click to disable editing (view-only mode)';
+    } else {
+        editBtn.className = 'btn btn-sm btn-warning';
+        editBtnText.textContent = 'Enable Editing';
+        editBtn.title = 'Click to enable editing';
+    }
+
+    // Update Print toggle button
+    const printToggleBtn = document.getElementById('togglePrintBtn');
+    const printBtnText = document.getElementById('printBtnText');
+    if (canPrint) {
+        printToggleBtn.className = 'btn btn-sm btn-outline-warning';
+        printBtnText.textContent = 'Disable Printing';
+        printToggleBtn.title = 'Click to disable printing';
+    } else {
+        printToggleBtn.className = 'btn btn-sm btn-warning';
+        printBtnText.textContent = 'Enable Printing';
+        printToggleBtn.title = 'Click to enable printing';
+    }
+
+    // Update Print action button (disable when printing is disabled)
+    const printBtn = document.getElementById('printBtn');
+    if (canPrint) {
+        printBtn.disabled = false;
+        printBtn.title = "Opens Collabora's print dialog. Alternatively use File > Print or Ctrl+P inside the document.";
+    } else {
+        printBtn.disabled = true;
+        printBtn.title = 'Printing is currently disabled. Click "Enable Printing" to allow printing.';
+    }
 }
 
 // ========================================

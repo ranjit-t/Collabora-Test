@@ -118,6 +118,7 @@ def check_file_info(file_id):
     """
     CheckFileInfo - WOPI endpoint
     Returns metadata about the file
+    Supports permission query parameters: ?permissions=readonly or ?permissions=noprint
     """
     file_path = get_file_path(file_id)
 
@@ -130,6 +131,11 @@ def check_file_info(file_id):
         version = get_file_version(file_path)
         filename = os.path.basename(file_path)
 
+        # Get permissions from query parameters
+        permissions = request.args.get('permissions', '')
+        can_edit = 'readonly' not in permissions
+        can_print = 'noprint' not in permissions
+
         info = {
             "BaseFileName": filename,
             "OwnerId": "wopi-server",
@@ -137,8 +143,10 @@ def check_file_info(file_id):
             "Version": version,
             "UserId": "demo-user",
             "UserFriendlyName": "Demo User",
-            "UserCanWrite": True,
-            "SupportsUpdate": True,
+            "UserCanWrite": can_edit,  # Controls editing capability
+            "SupportsUpdate": can_edit,  # Controls if updates are supported
+            "DisablePrint": not can_print,  # Controls printing capability
+            "HidePrintOption": not can_print,  # Hides print button in Collabora UI
             "SupportsLocks": False,
             "SupportsGetLock": False,
             "SupportsExtendedLockLength": False,
@@ -146,7 +154,7 @@ def check_file_info(file_id):
             "PostMessageOrigin": "*"
         }
 
-        app.logger.info(f"CheckFileInfo for {file_id}: size={size}, version={version}")
+        app.logger.info(f"CheckFileInfo for {file_id}: size={size}, version={version}, can_edit={can_edit}, can_print={can_print}")
 
         resp = jsonify(info)
         resp.headers["Cache-Control"] = "no-store"

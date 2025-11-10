@@ -141,6 +141,19 @@
                     <iframe id="collaboraFrame"></iframe>
                 </div>
                 <div class="modal-footer">
+                    <!-- Permission Toggles (Left side) -->
+                    <div class="me-auto">
+                        <button type="button" id="toggleEditBtn" class="btn btn-sm btn-outline-warning"
+                                onclick="toggleEditing()" title="Toggle editing mode">
+                            <i class="bi bi-pencil-square"></i> <span id="editBtnText">Disable Editing</span>
+                        </button>
+                        <button type="button" id="togglePrintBtn" class="btn btn-sm btn-outline-warning"
+                                onclick="togglePrinting()" title="Toggle printing capability">
+                            <i class="bi bi-printer"></i> <span id="printBtnText">Disable Printing</span>
+                        </button>
+                    </div>
+
+                    <!-- Action Buttons (Right side) -->
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-circle"></i> Close
                     </button>
@@ -152,7 +165,7 @@
                             title="Download document to your computer">
                         <i class="bi bi-download"></i> Download
                     </button>
-                    <button type="button" class="btn btn-info" onclick="printDocument()"
+                    <button type="button" id="printBtn" class="btn btn-info" onclick="printDocument()"
                             title="Opens Collabora's print dialog. Alternatively use File > Print or Ctrl+P inside the document.">
                         <i class="bi bi-printer"></i> Print
                     </button>
